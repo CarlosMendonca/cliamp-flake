@@ -2,7 +2,6 @@
   description = "cliamp - a terminal music player";
 
   inputs = {
-    # consumers can override: inputs.cliamp.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     flake-utils.url = "github:numtide/flake-utils";
   };
