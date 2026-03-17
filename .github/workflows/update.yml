@@ -1,0 +1,122 @@
+name: Auto-update cliamp
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Check for new release
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST=$(gh api repos/bjarneo/cliamp/releases/latest --jq '.tag_name')
+          LATEST_SEMVER="${LATEST#v}"
+          CURRENT=$(grep -oP '(?<=version = ")[^"]+' flake.nix)
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "latest_semver=${LATEST_SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
+          if [ "$LATEST_SEMVER" = "$CURRENT" ]; then
+            echo "Already at latest version ${CURRENT}, nothing to do."
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version available: ${CURRENT} -> ${LATEST_SEMVER}"
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute src hash
+        if: steps.version.outputs.up_to_date == 'false'
+        id: src_hash
+        run: |
+          LATEST="${{ steps.version.outputs.latest }}"
+          URL="https://github.com/bjarneo/cliamp/archive/refs/tags/${LATEST}.tar.gz"
+          RAW=$(nix-prefetch-url --unpack --type sha256 "$URL" 2>/dev/null)
+          SRC_HASH=$(nix hash to-sri --type sha256 "$RAW")
+          echo "src_hash=${SRC_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Patch version, rev, and src hash
+        if: steps.version.outputs.up_to_date == 'false'
+        run: |
+          LATEST="${{ steps.version.outputs.latest }}"
+          LATEST_SEMVER="${{ steps.version.outputs.latest_semver }}"
+          SRC_HASH="${{ steps.src_hash.outputs.src_hash }}"
+          sed -i \
+            -e "s|version = \"[^\"]*\"|version = \"${LATEST_SEMVER}\"|" \
+            -e "s|rev = \"v[^\"]*\"|rev = \"${LATEST}\"|" \
+            -e "s|hash = \"sha256-[^\"]*\"|hash = \"${SRC_HASH}\"|" \
+            flake.nix
+
+      - name: Get vendorHash via fakeHash trick
+        if: steps.version.outputs.up_to_date == 'false'
+        id: vendor_hash
+        run: |
+          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${FAKE}\"|" flake.nix
+          BUILD_OUTPUT=$(nix build path:. 2>&1 || true)
+          VENDOR_HASH=$(printf '%s\n' "$BUILD_OUTPUT" | grep 'got:' | grep -oP 'sha256-\S+')
+          if [ -z "$VENDOR_HASH" ]; then
+            echo "ERROR: could not extract vendorHash from nix build output"
+            printf '%s\n' "$BUILD_OUTPUT"
+            exit 1
+          fi
+          sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${VENDOR_HASH}\"|" flake.nix
+          echo "vendor_hash=${VENDOR_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and run
+        if: steps.version.outputs.up_to_date == 'false'
+        run: |
+          nix build path:.
+          ./result/bin/cliamp -v
+
+      - name: Open PR
+        if: steps.version.outputs.up_to_date == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST="${{ steps.version.outputs.latest }}"
+          LATEST_SEMVER="${{ steps.version.outputs.latest_semver }}"
+          CURRENT="${{ steps.version.outputs.current }}"
+          BRANCH="auto-update/cliamp-${LATEST_SEMVER}"
+
+          if git ls-remote --exit-code origin "$BRANCH" > /dev/null 2>&1; then
+            echo "Branch ${BRANCH} already exists, PR likely already open. Skipping."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add flake.nix
+          git commit -m "chore: update cliamp to ${LATEST}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "chore: update cliamp to ${LATEST}" \
+            --body "Automated update of cliamp from \`v${CURRENT}\` to \`${LATEST}\`.
+
+          Changes to \`flake.nix\`:
+          - \`version\`: \`${CURRENT}\` → \`${LATEST_SEMVER}\`
+          - \`rev\`: \`v${CURRENT}\` → \`${LATEST}\`
+          - \`hash\`: updated (src tarball)
+          - \`vendorHash\`: updated (Go vendor dependencies)
+
+          Build and smoke-test (\`cliamp -v\`) verified." \
+            --base main \
+            --head "$BRANCH"
