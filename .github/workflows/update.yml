@@ -36,6 +36,9 @@ jobs:
           if [ "$LATEST_SEMVER" = "$CURRENT" ]; then
             echo "Already at latest version ${CURRENT}, nothing to do."
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          elif gh pr list --head "auto-update/cliamp-${LATEST_SEMVER}" --json number --jq 'length' | grep -q '^[1-9]'; then
+            echo "Open PR already exists for ${LATEST}, nothing to do."
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
           else
             echo "New version available: ${CURRENT} -> ${LATEST_SEMVER}"
             echo "up_to_date=false" >> "$GITHUB_OUTPUT"
@@ -95,17 +98,12 @@ jobs:
           CURRENT="${{ steps.version.outputs.current }}"
           BRANCH="auto-update/cliamp-${LATEST_SEMVER}"
 
-          if git ls-remote --exit-code origin "$BRANCH" > /dev/null 2>&1; then
-            echo "Branch ${BRANCH} already exists, PR likely already open. Skipping."
-            exit 0
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add flake.nix
           git commit -m "chore: update cliamp to ${LATEST}"
-          git push origin "$BRANCH"
+          git push --force origin "$BRANCH"
 
           gh pr create \
             --title "chore: update cliamp to ${LATEST}" \
