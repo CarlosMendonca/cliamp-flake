@@ -19,10 +19,16 @@ cliamp
 
 ### Use in a NixOS or home-manager configuration
 
-Add the flake as an input:
+Add the flake as an input. To always follow the latest version:
 
 ```nix
 inputs.cliamp.url = "github:CarlosMendonca/cliamp-flake";
+```
+
+To pin a specific version:
+
+```nix
+inputs.cliamp.url = "github:CarlosMendonca/cliamp-flake?ref=v1.21.4";
 ```
 
 To reuse your existing nixpkgs instead of pulling in a separate one:
