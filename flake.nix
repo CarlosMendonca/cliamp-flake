@@ -13,7 +13,7 @@
       in {
         packages.cliamp = pkgs.buildGoModule {
           pname = "cliamp";
-          version = "1.21.3";
+          version = "1.21.4";
 
           nativeBuildInputs = [ pkgs.pkg-config ];
 
@@ -27,8 +27,8 @@
           src = pkgs.fetchFromGitHub {
             owner = "bjarneo";
             repo = "cliamp";
-            rev = "v1.21.3";
-            hash = "sha256-noL8Aea5jFOgahbZ4FTuU81dEofCmAXG3OxrG5ZRStc=";
+            rev = "v1.21.4";
+            hash = "sha256-k24tNVQYwn/xOIOn2zH9Z79IKYkSv2FvWHM+yPxepNg=";
           };
 
           vendorHash = "sha256-UMDCpfSGfvJmI+sImaFzgZpLNaLMgEnmGCqERwPokHM=";
