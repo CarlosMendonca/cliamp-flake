@@ -65,6 +65,9 @@ jobs:
             -e "s|rev = \"v[^\"]*\"|rev = \"${LATEST}\"|" \
             -e "s|hash = \"sha256-[^\"]*\"|hash = \"${SRC_HASH}\"|" \
             flake.nix
+          sed -i \
+            -e "s|cliamp \[v[^]]*\](https://github.com/bjarneo/cliamp/releases/tag/v[^)]*)|cliamp [${LATEST}](https://github.com/bjarneo/cliamp/releases/tag/${LATEST})|" \
+            README.md
 
       - name: Get vendorHash via fakeHash trick
         if: steps.version.outputs.up_to_date == 'false'
@@ -101,7 +104,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add flake.nix
+          git add flake.nix README.md
           git commit -m "chore: update cliamp to ${LATEST}"
           git push --force origin "$BRANCH"
 
@@ -109,11 +112,9 @@ jobs:
             --title "chore: update cliamp to ${LATEST}" \
             --body "Automated update of cliamp from \`v${CURRENT}\` to \`${LATEST}\`.
 
-          Changes to \`flake.nix\`:
-          - \`version\`: \`${CURRENT}\` → \`${LATEST_SEMVER}\`
-          - \`rev\`: \`v${CURRENT}\` → \`${LATEST}\`
-          - \`hash\`: updated (src tarball)
-          - \`vendorHash\`: updated (Go vendor dependencies)
+          Changes:
+          - \`flake.nix\`: \`version\`, \`rev\`, \`hash\`, \`vendorHash\` updated
+          - \`README.md\`: version link updated to \`${LATEST}\`
 
           Build and smoke-test (\`cliamp -v\`) verified." \
             --base main \
