@@ -89,7 +89,13 @@ jobs:
         if: steps.version.outputs.up_to_date == 'false'
         run: |
           nix build path:.
-          ./result/bin/cliamp -v
+          EXPECTED="cliamp ${{ steps.version.outputs.latest }}"
+          ACTUAL=$(./result/bin/cliamp -v)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "ERROR: expected '${EXPECTED}', got '${ACTUAL}'"
+            exit 1
+          fi
+          echo "OK: ${ACTUAL}"
 
       - name: Open PR
         if: steps.version.outputs.up_to_date == 'false'

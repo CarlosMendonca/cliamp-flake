@@ -10,10 +10,11 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        version = "1.21.4";
       in {
         packages.cliamp = pkgs.buildGoModule {
           pname = "cliamp";
-          version = "1.21.4";
+          inherit version;
 
           nativeBuildInputs = [ pkgs.pkg-config ];
 
@@ -32,6 +33,8 @@
           };
 
           vendorHash = "sha256-UMDCpfSGfvJmI+sImaFzgZpLNaLMgEnmGCqERwPokHM=";
+
+          ldflags = [ "-X main.version=v${version}" ];
 
           meta = {
             description = "A terminal music player built with Bubbletea, Lip Gloss, Beep, and go-librespot";
