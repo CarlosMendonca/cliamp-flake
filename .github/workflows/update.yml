@@ -126,4 +126,9 @@ jobs:
             --base main \
             --head "$BRANCH")
 
-          gh pr merge --auto --squash "$PR_URL"
+          gh pr merge --squash "$PR_URL"
+
+          git checkout main
+          git pull
+          git tag "$LATEST"
+          git push origin "$LATEST"
