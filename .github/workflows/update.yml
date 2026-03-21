@@ -16,12 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Nix
-        uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-
       - name: Check for new release
         id: version
         env:
@@ -43,6 +37,13 @@ jobs:
             echo "New version available: ${CURRENT} -> ${LATEST_SEMVER}"
             echo "up_to_date=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Install Nix
+        if: steps.version.outputs.up_to_date == 'false'
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
       - name: Compute src hash
         if: steps.version.outputs.up_to_date == 'false'
