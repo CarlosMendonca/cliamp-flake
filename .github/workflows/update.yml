@@ -114,7 +114,7 @@ jobs:
           git commit -m "chore: update cliamp to ${LATEST}"
           git push --force origin "$BRANCH"
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "chore: update cliamp to ${LATEST}" \
             --body "Automated update of cliamp from \`v${CURRENT}\` to \`${LATEST}\`.
 
@@ -124,4 +124,6 @@ jobs:
 
           Build and smoke-test (\`cliamp -v\`) verified." \
             --base main \
-            --head "$BRANCH"
+            --head "$BRANCH")
+
+          gh pr merge --auto --squash "$PR_URL"
