@@ -90,7 +90,7 @@ jobs:
         if: steps.version.outputs.up_to_date == 'false'
         run: |
           nix build path:.
-          EXPECTED="cliamp ${{ steps.version.outputs.latest }}"
+          EXPECTED="cliamp version ${{ steps.version.outputs.latest }}"
           ACTUAL=$(./result/bin/cliamp -v)
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "ERROR: expected '${EXPECTED}', got '${ACTUAL}'"
