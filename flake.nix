@@ -10,7 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        version = "1.33.1";
+        version = "1.33.6";
       in {
         packages.cliamp = pkgs.buildGoModule {
           pname = "cliamp";
@@ -28,8 +28,8 @@
           src = pkgs.fetchFromGitHub {
             owner = "bjarneo";
             repo = "cliamp";
-            rev = "v1.33.1";
-            hash = "sha256-l+uuy3gXeZDS7Jy7qWnorasYRJzA4GPDzZwjeTefrqs=";
+            rev = "v1.33.6";
+            hash = "sha256-4lYTzUr4vdk6CHdtoRoSDJNJcaElQMxYWe/C47iaGDo=";
           };
 
           vendorHash = "sha256-+uh+4ZYvnlKmRSIvZFlnfBPqU0CFFe/Op1Gr9hjIr4U=";
