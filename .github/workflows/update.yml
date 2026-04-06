@@ -77,10 +77,12 @@ jobs:
           FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
           sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${FAKE}\"|" flake.nix
           BUILD_OUTPUT=$(nix build path:. 2>&1 || true)
-          VENDOR_HASH=$(printf '%s\n' "$BUILD_OUTPUT" | grep 'got:' | grep -oP 'sha256-\S+')
+          echo "--- nix build output ---"
+          printf '%s\n' "$BUILD_OUTPUT"
+          echo "--- end nix build output ---"
+          VENDOR_HASH=$(printf '%s\n' "$BUILD_OUTPUT" | grep -E '^\s+(got|hash):' | grep -oP 'sha256-\S+')
           if [ -z "$VENDOR_HASH" ]; then
             echo "ERROR: could not extract vendorHash from nix build output"
-            printf '%s\n' "$BUILD_OUTPUT"
             exit 1
           fi
           sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${VENDOR_HASH}\"|" flake.nix
