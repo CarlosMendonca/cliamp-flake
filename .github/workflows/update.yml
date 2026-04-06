@@ -70,6 +70,10 @@ jobs:
             -e "s|cliamp \[v[^]]*\](https://github.com/bjarneo/cliamp/releases/tag/v[^)]*)|cliamp [${LATEST}](https://github.com/bjarneo/cliamp/releases/tag/${LATEST})|" \
             README.md
 
+      - name: Update flake.lock
+        if: steps.version.outputs.up_to_date == 'false'
+        run: nix flake update
+
       - name: Get vendorHash via fakeHash trick
         if: steps.version.outputs.up_to_date == 'false'
         id: vendor_hash
@@ -113,7 +117,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add flake.nix README.md
+          git add flake.nix flake.lock README.md
           git commit -m "chore: update cliamp to ${LATEST}"
           git push --force origin "$BRANCH"
 
