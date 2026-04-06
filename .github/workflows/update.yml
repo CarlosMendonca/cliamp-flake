@@ -52,7 +52,7 @@ jobs:
           LATEST="${{ steps.version.outputs.latest }}"
           URL="https://github.com/bjarneo/cliamp/archive/refs/tags/${LATEST}.tar.gz"
           RAW=$(nix-prefetch-url --unpack --type sha256 "$URL" 2>/dev/null)
-          SRC_HASH=$(nix hash to-sri --type sha256 "$RAW")
+          SRC_HASH=$(nix hash convert --hash-algo sha256 --to sri "$RAW")
           echo "src_hash=${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
       - name: Patch version, rev, and src hash
