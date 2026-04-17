@@ -56,4 +56,4 @@ nix build
 
 ## Current version
 
-cliamp [v1.35.2](https://github.com/bjarneo/cliamp/releases/tag/v1.35.2)
+cliamp [v1.36.0](https://github.com/bjarneo/cliamp/releases/tag/v1.36.0)
