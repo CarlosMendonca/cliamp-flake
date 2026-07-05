@@ -1,55 +1,67 @@
 {
-  description = "cliamp - a terminal music player";
+  description = "cliamp - a terminal music player, version-selectable";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    let
+      # Single source of truth for every packaged release.
+      cliampData = builtins.fromJSON (builtins.readFile ./data/cliamp.json);
+
+      mkPackages =
+        pkgs:
+        import ./lib/mk-packages.nix {
+          inherit pkgs cliampData;
+          lib = pkgs.lib;
+        };
+    in
+    {
+      # Fold every cliamp_*/cliamp package into a consumer's nixpkgs. Build from
+      # `prev` (leaf packages that don't reference other cliamp packages), and drop
+      # the `default` alias so consumers don't get a stray `pkgs.default`.
+      overlays.default = _final: prev: removeAttrs (mkPackages prev) [ "default" ];
+    }
+    // flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        version = "1.57.1";
-      in {
-        packages.cliamp = pkgs.buildGoModule {
-          pname = "cliamp";
-          inherit version;
 
-          nativeBuildInputs = [ pkgs.pkg-config ];
-
-          buildInputs = [
-            pkgs.alsa-lib
-            pkgs.libogg
-            pkgs.libvorbis
-            pkgs.flac
+        # `nix run .#update` appends the newest cliamp release to data/cliamp.json.
+        update = pkgs.writeShellApplication {
+          name = "cliamp-update";
+          runtimeInputs = [
+            pkgs.curl
+            pkgs.jq
+            pkgs.coreutils
+            pkgs.gnugrep
+            pkgs.nix
           ];
-
-          src = pkgs.fetchFromGitHub {
-            owner = "bjarneo";
-            repo = "cliamp";
-            rev = "v1.57.1";
-            hash = "sha256-wRXF2bnl3xFJtuESJX2UVSsPwl4xo6E+k7nIdtzCULo=";
-          };
-
-          vendorHash = "sha256-A2Ygc1a9e2flZzaNAEXvr8Ui1cE89TxBfUNALmDzIo0=";
-
-          ldflags = [ "-X main.version=v${version}" ];
-
-          meta = {
-            description = "A terminal music player built with Bubbletea, Lip Gloss, Beep, and go-librespot";
-            homepage = "https://github.com/bjarneo/cliamp";
-            license = pkgs.lib.licenses.mit;
-            mainProgram = "cliamp";
-          };
+          text = ''exec bash ${./updater/update.sh} "$@"'';
         };
-
-        packages.default = self.packages.${system}.cliamp;
+      in
+      {
+        packages = mkPackages pkgs;
 
         apps.cliamp = flake-utils.lib.mkApp {
           drv = self.packages.${system}.cliamp;
         };
-
         apps.default = self.apps.${system}.cliamp;
-      });
+
+        apps.update = {
+          type = "app";
+          program = "${update}/bin/cliamp-update";
+          meta.description = "Append the newest cliamp release to data/cliamp.json";
+        };
+
+        formatter = pkgs.nixfmt;
+      }
+    );
 }

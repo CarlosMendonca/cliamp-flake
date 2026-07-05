@@ -23,12 +23,12 @@ jobs:
         run: |
           LATEST=$(gh api repos/bjarneo/cliamp/releases/latest --jq '.tag_name')
           LATEST_SEMVER="${LATEST#v}"
-          CURRENT=$(grep -oP '(?<=version = ")[^"]+' flake.nix)
+          CURRENT=$(jq -r 'max_by(.version | split(".") | map(tonumber)) | .version' data/cliamp.json)
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "latest_semver=${LATEST_SEMVER}" >> "$GITHUB_OUTPUT"
           echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
-          if [ "$LATEST_SEMVER" = "$CURRENT" ]; then
-            echo "Already at latest version ${CURRENT}, nothing to do."
+          if jq -e --arg v "$LATEST_SEMVER" 'any(.[]; .version == $v)' data/cliamp.json >/dev/null; then
+            echo "Version ${LATEST_SEMVER} already in data/cliamp.json, nothing to do."
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
           elif gh pr list --head "auto-update/cliamp-${LATEST_SEMVER}" --json number --jq 'length' | grep -q '^[1-9]'; then
             echo "Open PR already exists for ${LATEST}, nothing to do."
@@ -45,57 +45,28 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - name: Compute src hash
+      - name: Append new release to data/cliamp.json
         if: steps.version.outputs.up_to_date == 'false'
-        id: src_hash
-        run: |
-          LATEST="${{ steps.version.outputs.latest }}"
-          URL="https://github.com/bjarneo/cliamp/archive/refs/tags/${LATEST}.tar.gz"
-          RAW=$(nix-prefetch-url --unpack --type sha256 "$URL" 2>/dev/null)
-          SRC_HASH=$(nix hash convert --hash-algo sha256 --to sri "$RAW")
-          echo "src_hash=${SRC_HASH}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: nix run path:.#update
 
-      - name: Patch version, rev, and src hash
+      - name: Refresh flake.lock
+        if: steps.version.outputs.up_to_date == 'false'
+        run: nix flake update
+
+      - name: Update README current version
         if: steps.version.outputs.up_to_date == 'false'
         run: |
           LATEST="${{ steps.version.outputs.latest }}"
-          LATEST_SEMVER="${{ steps.version.outputs.latest_semver }}"
-          SRC_HASH="${{ steps.src_hash.outputs.src_hash }}"
-          sed -i \
-            -e "s|version = \"[^\"]*\"|version = \"${LATEST_SEMVER}\"|" \
-            -e "s|rev = \"v[^\"]*\"|rev = \"${LATEST}\"|" \
-            -e "s|hash = \"sha256-[^\"]*\"|hash = \"${SRC_HASH}\"|" \
-            flake.nix
           sed -i \
             -e "s|cliamp \[v[^]]*\](https://github.com/bjarneo/cliamp/releases/tag/v[^)]*)|cliamp [${LATEST}](https://github.com/bjarneo/cliamp/releases/tag/${LATEST})|" \
             README.md
 
-      - name: Update flake.lock
-        if: steps.version.outputs.up_to_date == 'false'
-        run: nix flake update
-
-      - name: Get vendorHash via fakeHash trick
-        if: steps.version.outputs.up_to_date == 'false'
-        id: vendor_hash
-        run: |
-          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-          sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${FAKE}\"|" flake.nix
-          BUILD_OUTPUT=$(nix build path:. 2>&1 || true)
-          echo "--- nix build output ---"
-          printf '%s\n' "$BUILD_OUTPUT"
-          echo "--- end nix build output ---"
-          VENDOR_HASH=$(printf '%s\n' "$BUILD_OUTPUT" | grep -E '^\s+(got|hash):' | grep -oP 'sha256-\S+')
-          if [ -z "$VENDOR_HASH" ]; then
-            echo "ERROR: could not extract vendorHash from nix build output"
-            exit 1
-          fi
-          sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"${VENDOR_HASH}\"|" flake.nix
-          echo "vendor_hash=${VENDOR_HASH}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and run
+      - name: Build and smoke-test
         if: steps.version.outputs.up_to_date == 'false'
         run: |
-          nix build path:.
+          nix build path:.#cliamp
           EXPECTED="cliamp version ${{ steps.version.outputs.latest }}"
           ACTUAL=$(./result/bin/cliamp -v)
           if [ "$ACTUAL" != "$EXPECTED" ]; then
@@ -117,17 +88,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add flake.nix flake.lock README.md
-          git commit -m "chore: update cliamp to ${LATEST}"
+          git add data/cliamp.json flake.lock README.md
+          git commit -m "chore: add cliamp ${LATEST}"
           git push --force origin "$BRANCH"
 
           PR_URL=$(gh pr create \
-            --title "chore: update cliamp to ${LATEST}" \
-            --body "Automated update of cliamp from \`v${CURRENT}\` to \`${LATEST}\`.
+            --title "chore: add cliamp ${LATEST}" \
+            --body "Automated addition of cliamp \`${LATEST}\` (previous newest: \`v${CURRENT}\`).
 
           Changes:
-          - \`flake.nix\`: \`version\`, \`rev\`, \`hash\`, \`vendorHash\` updated
-          - \`README.md\`: version link updated to \`${LATEST}\`
+          - \`data/cliamp.json\`: new entry with \`srcHash\` and \`vendorHash\`
+          - \`README.md\`: current-version link updated to \`${LATEST}\`
+
+          Installable as \`#cliamp_$(printf '%s' "$LATEST_SEMVER" | tr '.' '_')\`; \`cliamp\`/\`default\` now track it.
 
           Build and smoke-test (\`cliamp -v\`) verified." \
             --base main \
@@ -135,6 +108,7 @@ jobs:
 
           gh pr merge --squash "$PR_URL"
 
+          # Keep pushing git tags so legacy ?ref=vX.Y.Z pins remain available.
           git checkout main
           git pull
           git tag "$LATEST"
