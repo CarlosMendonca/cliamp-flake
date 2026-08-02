@@ -70,7 +70,7 @@ resort "$DATA"
 
 log "resolving vendorHash via build of .#$ATTR"
 BUILD_OUTPUT="$(nix build "path:.#${ATTR}" 2>&1 || true)"
-VENDOR_HASH="$(printf '%s\n' "$BUILD_OUTPUT" | grep -E '^\s+(got|hash):' | grep -oP 'sha256-\S+' | head -1)"
+VENDOR_HASH="$(printf '%s\n' "$BUILD_OUTPUT" | grep -E '^\s+(got|hash):' | grep -oP 'sha256-\S+' | head -1 || true)"
 if [[ -z "$VENDOR_HASH" ]]; then
   log "ERROR: could not extract vendorHash from build output:"
   printf '%s\n' "$BUILD_OUTPUT" >&2
