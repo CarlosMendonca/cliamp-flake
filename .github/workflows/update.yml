@@ -45,15 +45,15 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
+      - name: Refresh flake.lock
+        if: steps.version.outputs.up_to_date == 'false'
+        run: nix flake update
+
       - name: Append new release to data/cliamp.json
         if: steps.version.outputs.up_to_date == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: nix run path:.#update
-
-      - name: Refresh flake.lock
-        if: steps.version.outputs.up_to_date == 'false'
-        run: nix flake update
 
       - name: Update README current version
         if: steps.version.outputs.up_to_date == 'false'
