@@ -333,5 +333,10 @@
     "version": "1.62.0",
     "srcHash": "sha256-gGTSU4J3U9aojcfK9lE2qNDtye9N8WfJi0pIVk0ndJQ=",
     "vendorHash": "sha256-KYjP6qEINdSlcDSEMKxMwDfXzuQPAQSe4oZh+o4PrFs="
+  },
+  {
+    "version": "1.63.0",
+    "srcHash": "sha256-bNl4A/MWcFTk7ojlMFfUj0253i7BR25znwYNJ2wfSdU=",
+    "vendorHash": "sha256-KYjP6qEINdSlcDSEMKxMwDfXzuQPAQSe4oZh+o4PrFs="
   }
 ]
