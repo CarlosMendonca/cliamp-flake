@@ -96,4 +96,4 @@ This runs automatically every two hours via GitHub Actions.
 
 ## Current version
 
-cliamp [v1.62.0](https://github.com/bjarneo/cliamp/releases/tag/v1.62.0)
+cliamp [v1.63.0](https://github.com/bjarneo/cliamp/releases/tag/v1.63.0)
