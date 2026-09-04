@@ -24,6 +24,7 @@ pkgs.buildGoModule {
     pkgs.libogg
     pkgs.libvorbis
     pkgs.flac
+    pkgs.libmpg123
   ];
 
   src = pkgs.fetchFromGitHub {
