@@ -348,5 +348,10 @@
     "version": "1.63.2",
     "srcHash": "sha256-HqFDT8jGvrKqb6bupvXqZ5ECpvColRB5dXPwcKCX4RQ=",
     "vendorHash": "sha256-WYyv0w5KFA15axb+NA9tClfc1H4Znj8kI2boR8XziXg="
+  },
+  {
+    "version": "2.0.1",
+    "srcHash": "sha256-r7MrrcVt+/f+iPozn9jaczJmpPv431wAoW8LvHKBtB8=",
+    "vendorHash": "sha256-rtwUWbft5XGEbuBCn0OMCn4TS5Ul+UXJNIqNOzXfU+M="
   }
 ]
